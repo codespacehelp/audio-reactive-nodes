@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "n_01",
+      "name": "sphere1",
+      "type": "sphere",
+      "position": { "x": 100, "y": 200 },
+      "params": {}
+    },
+    {
+      "id": "n_02",
+      "name": "scene1",
+      "type": "scene",
+      "position": { "x": 400, "y": 200 },
+      "params": {}
+    },
+    {
+      "id": "n_03",
+      "name": "out1",
+      "type": "out",
+      "position": { "x": 700, "y": 200 },
+      "params": {}
+    }
+  ],
+  "connections": [
+    {
+      "id": "c_01",
+      "fromNode": "n_01",
+      "fromPort": "geometry",
+      "toNode": "n_02",
+      "toPort": "geometry"
+    },
+    {
+      "id": "c_02",
+      "fromNode": "n_02",
+      "fromPort": "scene",
+      "toNode": "n_03",
+      "toPort": "scene"
+    }
+  ],
+  "viewport": { "panX": 0, "panY": 0, "zoom": 1 }
+}
