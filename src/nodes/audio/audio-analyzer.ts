@@ -1,6 +1,5 @@
 import type { NodeDef } from '../../types/node-def';
 import type { ChannelSet } from '../../types/runtime';
-import { getAudioContext } from '../../runtime/audio-context';
 
 // Cache analyser nodes per audio_analyzer node instance
 const analysers = new Map<string, AnalyserNode>();

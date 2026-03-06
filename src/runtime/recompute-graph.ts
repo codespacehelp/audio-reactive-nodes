@@ -15,7 +15,7 @@ import { compileExpression } from '../expression/compile';
  */
 export function recomputeGraph(project: ProjectSchema) {
   const nodeIds = project.nodes.map((n) => n.id);
-  const { forward, reverse } = buildAdjacency(nodeIds, project.connections);
+  const { reverse } = buildAdjacency(nodeIds, project.connections);
 
   // Build name→id lookup for resolving expression refs
   const nameToId = new Map<string, string>();

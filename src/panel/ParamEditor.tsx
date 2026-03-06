@@ -74,7 +74,7 @@ export default function ParamEditor({ nodeId, def, paramValue }: Props) {
           expression={typeof rawValue === 'string' ? rawValue : ''}
         />
       ) : (
-        <LiteralInput nodeId={nodeId} def={def} value={rawValue} />
+        <LiteralInput nodeId={nodeId} def={def} value={rawValue as string | number | boolean} />
       )}
     </div>
   );

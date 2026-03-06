@@ -2,7 +2,7 @@
 export type PortType = 'audio_stream' | 'channel_set' | 'geometry' | 'scene';
 
 /** Parameter value types */
-export type ParamType = 'int' | 'float' | 'bool' | 'string' | 'color' | 'vec2' | 'vec3';
+export type ParamType = 'int' | 'float' | 'bool' | 'string' | 'color' | 'vec2' | 'vec3' | 'enum';
 
 /** Node categories (determines color coding) */
 export type NodeCategory = 'audio' | 'channels' | 'geometry' | 'scene';

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useProjectStore } from '../../store/project-store';
 import { useRuntimeStore } from '../../store/runtime-store';
 import { worldToScreen } from '../camera';
-import { NODE_WIDTH, NODE_HEIGHT, NODE_HEADER_HEIGHT } from '../layout';
+import { NODE_WIDTH, NODE_HEADER_HEIGHT } from '../layout';
 
 /**
  * DOM overlay that renders node name labels positioned over the canvas.

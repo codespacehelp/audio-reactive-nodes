@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evaluate } from './interpreter';
 import { parse } from './parser';
-import type { ASTNode } from './types';
 
 function eval_(source: string, refs: Record<string, number> = {}): number {
   const ast = parse(source);

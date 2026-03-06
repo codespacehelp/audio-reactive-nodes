@@ -3,11 +3,13 @@
  * Used for preview history (e.g., 3 seconds of channel values at 60fps).
  */
 export class RingBuffer {
+  readonly capacity: number;
   readonly data: Float32Array;
   private _head = 0;
   private _count = 0;
 
-  constructor(public readonly capacity: number) {
+  constructor(capacity: number) {
+    this.capacity = capacity;
     this.data = new Float32Array(capacity);
   }
 

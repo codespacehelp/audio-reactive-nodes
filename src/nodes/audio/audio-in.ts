@@ -5,7 +5,7 @@ import { getAudioContext, resumeAudioContext } from '../../runtime/audio-context
 let mediaStream: MediaStream | null = null;
 let sourceNode: MediaStreamAudioSourceNode | null = null;
 let analyserForWaveform: AnalyserNode | null = null;
-let waveformData: Float32Array | null = null;
+let waveformData: Float32Array<ArrayBuffer> | null = null;
 let micError: string | null = null;
 let micState: 'idle' | 'requesting' | 'ready' | 'error' = 'idle';
 

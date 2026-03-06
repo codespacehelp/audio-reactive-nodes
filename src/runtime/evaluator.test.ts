@@ -196,7 +196,6 @@ describe('evaluateGraph', () => {
     const nodeB = makeNode('b', 'source', { val: 2 });
 
     const evaluateA = vi.fn((ctx: EvaluateContext) => ({ out: ctx.params.val }));
-    const evaluateB = vi.fn((ctx: EvaluateContext) => ({ out: ctx.params.val }));
 
     const defs: Record<string, NodeDef> = {
       source: {

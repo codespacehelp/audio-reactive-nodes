@@ -5,7 +5,6 @@ import CanvasRoot from './canvas/CanvasRoot';
 import PropertyPanel from './panel/PropertyPanel';
 import Toolbar from './toolbar/Toolbar';
 import PresentMode from './toolbar/PresentMode';
-import type { ProjectSchema } from './types/project';
 import { validateProject } from './schema/validate';
 import { recomputeGraph } from './runtime/recompute-graph';
 import { startFrameLoop, stopFrameLoop } from './runtime/frame-loop';

@@ -1,5 +1,3 @@
-import type { ParamMode } from './common';
-
 /** Compiled expression stored in runtime */
 export interface CompiledExpression {
   source: string;
