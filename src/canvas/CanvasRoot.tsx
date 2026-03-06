@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import { initRenderer, resizeRenderer, type CanvasContext } from './three/setup';
 import { updateCamera } from './camera';
 import { GridRenderer } from './three/grid';
+import { NodeRenderer } from './three/node-mesh';
 import { useProjectStore } from '../store/project-store';
 
 export default function CanvasRoot() {
@@ -9,19 +10,25 @@ export default function CanvasRoot() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasContext | null>(null);
   const gridRef = useRef<GridRenderer | null>(null);
+  const nodeRendererRef = useRef<NodeRenderer | null>(null);
   const rafRef = useRef<number>(0);
   const sizeRef = useRef({ width: 0, height: 0 });
 
   const render = useCallback(() => {
     const ctx = ctxRef.current;
     if (ctx) {
-      const viewport = useProjectStore.getState().viewport;
+      const state = useProjectStore.getState();
+      const { viewport, project, selectedNodeIds } = state;
       const { width, height } = sizeRef.current;
 
       updateCamera(ctx.camera, viewport, width, height);
 
       if (gridRef.current) {
         gridRef.current.update(viewport, width, height);
+      }
+
+      if (nodeRendererRef.current && project) {
+        nodeRendererRef.current.update(project.nodes, selectedNodeIds);
       }
 
       ctx.renderer.renderAsync(ctx.scene, ctx.camera);
@@ -43,6 +50,7 @@ export default function CanvasRoot() {
       }
       ctxRef.current = ctx;
       gridRef.current = new GridRenderer(ctx.scene);
+      nodeRendererRef.current = new NodeRenderer(ctx.scene);
 
       // Initial size
       const { clientWidth, clientHeight } = container;
@@ -69,6 +77,10 @@ export default function CanvasRoot() {
       disposed = true;
       cancelAnimationFrame(rafRef.current);
       ro.disconnect();
+      if (nodeRendererRef.current) {
+        nodeRendererRef.current.dispose();
+        nodeRendererRef.current = null;
+      }
       if (gridRef.current) {
         gridRef.current.dispose();
         gridRef.current = null;
