@@ -5,6 +5,7 @@ import { GridRenderer } from './three/grid';
 import { NodeRenderer } from './three/node-mesh';
 import { PortRenderer } from './three/port-mesh';
 import { EdgeRenderer } from './three/edge-lines';
+import { attachPanZoom } from './interaction/pan-zoom';
 import { useProjectStore } from '../store/project-store';
 
 export default function CanvasRoot() {
@@ -75,6 +76,9 @@ export default function CanvasRoot() {
       rafRef.current = requestAnimationFrame(render);
     });
 
+    // Pan and zoom
+    const cleanupPanZoom = attachPanZoom(container);
+
     // Resize observer
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -90,6 +94,7 @@ export default function CanvasRoot() {
     return () => {
       disposed = true;
       cancelAnimationFrame(rafRef.current);
+      cleanupPanZoom();
       ro.disconnect();
       if (edgeRendererRef.current) {
         edgeRendererRef.current.dispose();
