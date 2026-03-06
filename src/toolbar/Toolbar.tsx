@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useProjectStore } from '../store/project-store';
+import { useRuntimeStore } from '../store/runtime-store';
+import { initAudioInput } from '../nodes/audio/audio-in';
+import { resumeAudioContext } from '../runtime/audio-context';
 
 interface ToolbarProps {
   onPresent: () => void;
@@ -11,6 +14,10 @@ export default function Toolbar({ onPresent }: ToolbarProps) {
   const undoStack = useProjectStore((s) => s.undoStack);
   const redoStack = useProjectStore((s) => s.redoStack);
   const exportProject = useProjectStore((s) => s.exportProject);
+  const audioStarted = useRuntimeStore((s) => s.audioStarted);
+  const hasAudioNodes = useProjectStore(
+    (s) => s.project?.nodes.some((n) => n.type === 'audio_in') ?? false,
+  );
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -28,9 +35,27 @@ export default function Toolbar({ onPresent }: ToolbarProps) {
     );
   }
 
+  async function handleStart() {
+    await resumeAudioContext();
+    initAudioInput();
+    useRuntimeStore.getState().setAudioStarted();
+  }
+
+  const showStartButton = hasAudioNodes && !audioStarted;
+
   return (
     <div className="flex h-10 shrink-0 items-center border-b border-zinc-700 bg-zinc-800 px-4 text-sm gap-2">
       <span className="font-medium text-zinc-300 mr-auto">Audio Reactive Nodes</span>
+
+      {showStartButton && (
+        <button
+          onClick={handleStart}
+          className="absolute left-1/2 -translate-x-1/2 px-5 py-1 rounded-full bg-green-600 text-white hover:bg-green-500 font-medium shadow-lg shadow-green-900/30 transition-colors"
+          title="Start audio and run project"
+        >
+          Start Project
+        </button>
+      )}
 
       <button
         onClick={undo}

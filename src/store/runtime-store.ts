@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import type { RuntimeState, NodeRuntimeState, CompiledExpression } from '../types/runtime';
 
 export interface RuntimeStore extends RuntimeState {
+  /** Whether audio has been started by user gesture */
+  audioStarted: boolean;
+  /** Mark audio as started */
+  setAudioStarted: () => void;
   /** Initialize runtime state for a set of node IDs */
   initNodes: (nodeIds: string[]) => void;
   /** Mark a node as dirty and propagate downstream */
@@ -32,8 +36,10 @@ export const useRuntimeStore = create<RuntimeStore>()((set) => ({
   liveOrder: [],
   hasFrameDriven: false,
   expressions: {},
+  audioStarted: false,
 
   // Actions
+  setAudioStarted: () => set({ audioStarted: true }),
   initNodes: (nodeIds) =>
     set(() => {
       const nodes: Record<string, NodeRuntimeState> = {};

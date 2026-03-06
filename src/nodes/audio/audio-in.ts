@@ -40,15 +40,10 @@ export function initAudioInput() {
   requestMic();
 }
 
-// Auto-request on first user interaction (click/keydown) to satisfy
-// the user gesture requirement for getUserMedia in most browsers.
-function onFirstInteraction() {
-  requestMic();
-  window.removeEventListener('click', onFirstInteraction);
-  window.removeEventListener('keydown', onFirstInteraction);
+/** Returns current mic initialization state */
+export function getMicState() {
+  return micState;
 }
-window.addEventListener('click', onFirstInteraction);
-window.addEventListener('keydown', onFirstInteraction);
 
 export const audioInDef: NodeDef = {
   type: 'audio_in',
