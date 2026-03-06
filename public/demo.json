@@ -341,7 +341,7 @@
       "params": {
         "target_name": {
           "mode": "literal",
-          "value": ""
+          "value": "sphere1"
         },
         "material_mode": {
           "mode": "literal",
