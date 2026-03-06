@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useProjectStore } from './store/project-store';
 import { useRuntimeStore } from './store/runtime-store';
+import WebGPUCheck from './ui/WebGPUCheck';
 import defaultProject from './assets/default.json';
 import type { ProjectSchema } from './types/project';
 
@@ -33,19 +34,21 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-zinc-900 text-zinc-100">
-      {/* Toolbar */}
-      <div className="flex h-10 shrink-0 items-center border-b border-zinc-700 bg-zinc-800 px-4 text-sm">
-        <span className="font-medium text-zinc-300">Audio Reactive Nodes</span>
-      </div>
+    <WebGPUCheck>
+      <div className="flex h-screen w-screen flex-col bg-zinc-900 text-zinc-100">
+        {/* Toolbar */}
+        <div className="flex h-10 shrink-0 items-center border-b border-zinc-700 bg-zinc-800 px-4 text-sm">
+          <span className="font-medium text-zinc-300">Audio Reactive Nodes</span>
+        </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Canvas area */}
-        <div className="flex-1 relative" />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Canvas area */}
+          <div className="flex-1 relative" />
 
-        {/* Property panel */}
-        <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800" />
+          {/* Property panel */}
+          <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800" />
+        </div>
       </div>
-    </div>
+    </WebGPUCheck>
   );
 }
