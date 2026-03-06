@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useProjectStore } from './store/project-store';
 import { useRuntimeStore } from './store/runtime-store';
 import WebGPUCheck from './ui/WebGPUCheck';
+import CanvasRoot from './canvas/CanvasRoot';
 import defaultProject from './assets/default.json';
 import type { ProjectSchema } from './types/project';
 
@@ -43,7 +44,9 @@ export default function App() {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Canvas area */}
-          <div className="flex-1 relative" />
+          <div className="flex-1 relative">
+            <CanvasRoot />
+          </div>
 
           {/* Property panel */}
           <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800" />
