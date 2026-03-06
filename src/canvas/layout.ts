@@ -9,32 +9,32 @@ export const PORT_RADIUS = 6;
 export const PORT_SPACING = 24;
 export const PORT_MARGIN_TOP = 16; // from top of body area (below header)
 
-/** Category → body color (hex) */
+/** Category → body color (hex) — colorblind-friendly palette */
 export const CATEGORY_COLORS: Record<NodeCategory, number> = {
   audio: 0x4a1d6e, // purple
   channels: 0x1d4a6e, // blue
-  geometry: 0x1d6e4a, // green
-  scene: 0x6e4a1d, // orange-brown
+  geometry: 0x6e5a1d, // amber
+  scene: 0x1d5c5c, // teal
 };
 
 /** Category → header color (slightly lighter) */
 export const CATEGORY_HEADER_COLORS: Record<NodeCategory, number> = {
   audio: 0x5c2d80,
   channels: 0x2d5c80,
-  geometry: 0x2d805c,
-  scene: 0x805c2d,
+  geometry: 0x806b2d,
+  scene: 0x2d7070,
 };
 
-/** Port type → color (hex) */
+/** Port type → color (hex) — colorblind-friendly palette */
 export const PORT_TYPE_COLORS: Record<PortType, number> = {
   audio_stream: 0xa855f7, // purple
   channel_set: 0x3b82f6, // blue
-  geometry: 0x22c55e, // green
-  scene: 0xf97316, // orange
+  geometry: 0xf59e0b, // amber
+  scene: 0x14b8a6, // teal
 };
 
 /** Selection highlight color */
-export const SELECTION_COLOR = 0xf97316; // orange-500
+export const SELECTION_COLOR = 0xf472b6; // pink-400
 
 /**
  * Compute Y position for a port on a node.

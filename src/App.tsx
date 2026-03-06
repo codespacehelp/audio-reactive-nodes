@@ -1,22 +1,67 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useProjectStore } from './store/project-store';
-import { useRuntimeStore } from './store/runtime-store';
 import WebGPUCheck from './ui/WebGPUCheck';
 import CanvasRoot from './canvas/CanvasRoot';
+import PropertyPanel from './panel/PropertyPanel';
+import Toolbar from './toolbar/Toolbar';
+import PresentMode from './toolbar/PresentMode';
 import defaultProject from './assets/default.json';
 import type { ProjectSchema } from './types/project';
+import { validateProject } from './schema/validate';
+import { recomputeGraph } from './runtime/recompute-graph';
+import { startFrameLoop, stopFrameLoop } from './runtime/frame-loop';
+import { registerBuiltins } from './nodes/registry';
+import { useRuntimeStore } from './store/runtime-store';
+
+// Expose stores for debugging in dev
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__RUNTIME_STORE__ = useRuntimeStore;
+  (window as unknown as Record<string, unknown>).__PROJECT_STORE__ = useProjectStore;
+}
 
 export default function App() {
   const loadProject = useProjectStore((s) => s.loadProject);
-  const initNodes = useRuntimeStore((s) => s.initNodes);
   const project = useProjectStore((s) => s.project);
   const loadError = useProjectStore((s) => s.loadError);
+  const [presenting, setPresenting] = useState(false);
 
   useEffect(() => {
-    const proj = defaultProject as ProjectSchema;
-    loadProject(proj);
-    initNodes(proj.nodes.map((n) => n.id));
-  }, [loadProject, initNodes]);
+    registerBuiltins();
+
+    async function init() {
+      // Check for ?project= query param
+      const params = new URLSearchParams(window.location.search);
+      const projectUrl = params.get('project');
+
+      let proj: ProjectSchema;
+
+      if (projectUrl) {
+        try {
+          const response = await fetch(projectUrl);
+          if (!response.ok) throw new Error(`Failed to load: ${response.status}`);
+          const json = await response.json();
+          const result = validateProject(json);
+          if (!result.ok) throw new Error(result.error);
+          proj = result.value;
+        } catch (err) {
+          console.error('Failed to load project from URL, falling back to default:', err);
+          proj = defaultProject as ProjectSchema;
+        }
+      } else {
+        proj = defaultProject as ProjectSchema;
+      }
+
+      loadProject(proj);
+      recomputeGraph(proj);
+      startFrameLoop();
+    }
+
+    init();
+    return () => stopFrameLoop();
+  }, [loadProject]);
+
+  const handlePresent = useCallback(() => setPresenting(true), []);
+  const handleExitPresent = useCallback(() => setPresenting(false), []);
 
   if (loadError) {
     return (
@@ -37,10 +82,7 @@ export default function App() {
   return (
     <WebGPUCheck>
       <div className="flex h-screen w-screen flex-col bg-zinc-900 text-zinc-100">
-        {/* Toolbar */}
-        <div className="flex h-10 shrink-0 items-center border-b border-zinc-700 bg-zinc-800 px-4 text-sm">
-          <span className="font-medium text-zinc-300">Audio Reactive Nodes</span>
-        </div>
+        <Toolbar onPresent={handlePresent} />
 
         <div className="flex flex-1 overflow-hidden">
           {/* Canvas area */}
@@ -49,9 +91,13 @@ export default function App() {
           </div>
 
           {/* Property panel */}
-          <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800" />
+          <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800">
+            <PropertyPanel />
+          </div>
         </div>
       </div>
+
+      {presenting && <PresentMode onExit={handleExitPresent} />}
     </WebGPUCheck>
   );
 }

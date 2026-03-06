@@ -1,12 +1,14 @@
 import { useProjectStore } from '../../store/project-store';
 import { screenToWorld } from '../camera';
 import { hitTestNode } from './hit-test';
+import { NODE_WIDTH, NODE_HEIGHT } from '../layout';
+import type { SelectionBoxRenderer } from '../three/selection-box';
 
 /** Minimum pixel movement to count as a drag rather than a click */
 const DRAG_THRESHOLD = 4;
 
 export interface DragState {
-  /** Node being dragged (null = no drag or box select) */
+  /** Node being dragged (null = empty space → box select) */
   draggingNodeId: string | null;
   /** Whether a drag has been initiated (past threshold) */
   isDragging: boolean;
@@ -24,9 +26,13 @@ let dragState: DragState | null = null;
 
 /**
  * Attach left-click selection and drag handlers to a container element.
+ * Pass a SelectionBoxRenderer to enable rubber-band multi-select.
  * Returns a cleanup function.
  */
-export function attachSelection(container: HTMLElement): () => void {
+export function attachSelection(
+  container: HTMLElement,
+  selectionBox?: SelectionBoxRenderer,
+): () => void {
   function onMouseDown(e: MouseEvent) {
     if (e.button !== 0) return; // Left click only
 
@@ -73,30 +79,72 @@ export function attachSelection(container: HTMLElement): () => void {
     if (!dragState.isDragging && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
       dragState.isDragging = true;
 
-      // Push undo before first drag movement
+      // Push undo before first drag movement (node drag only)
       if (dragState.draggingNodeId && !dragState.undoPushed) {
         useProjectStore.getState().pushUndo();
         dragState.undoPushed = true;
       }
     }
 
-    if (dragState.isDragging && dragState.draggingNodeId) {
-      const { viewport, selectedNodeIds } = useProjectStore.getState();
-      const moveDx = (e.clientX - dragState.lastScreenX) / viewport.zoom;
-      const moveDy = (e.clientY - dragState.lastScreenY) / viewport.zoom;
+    if (dragState.isDragging) {
+      if (dragState.draggingNodeId) {
+        // --- Node dragging ---
+        const { viewport, selectedNodeIds } = useProjectStore.getState();
+        const moveDx = (e.clientX - dragState.lastScreenX) / viewport.zoom;
+        const moveDy = (e.clientY - dragState.lastScreenY) / viewport.zoom;
 
-      // Move all selected nodes
-      const { project } = useProjectStore.getState();
-      if (project) {
-        for (const nodeId of selectedNodeIds) {
-          const node = project.nodes.find((n) => n.id === nodeId);
-          if (node) {
-            useProjectStore.getState().setNodePosition(
-              nodeId,
-              node.position.x + moveDx,
-              node.position.y + moveDy,
-            );
+        const { project } = useProjectStore.getState();
+        if (project) {
+          for (const nodeId of selectedNodeIds) {
+            const node = project.nodes.find((n) => n.id === nodeId);
+            if (node) {
+              useProjectStore.getState().setNodePosition(
+                nodeId,
+                node.position.x + moveDx,
+                node.position.y + moveDy,
+              );
+            }
           }
+        }
+      } else if (selectionBox) {
+        // --- Box select ---
+        const rect = container.getBoundingClientRect();
+        const { viewport } = useProjectStore.getState();
+        const startWorld = screenToWorld(
+          dragState.startScreenX - rect.left,
+          dragState.startScreenY - rect.top,
+          viewport,
+        );
+        const currentWorld = screenToWorld(
+          e.clientX - rect.left,
+          e.clientY - rect.top,
+          viewport,
+        );
+        selectionBox.show(startWorld.x, startWorld.y, currentWorld.x, currentWorld.y);
+
+        // Live selection update: select nodes that intersect the box
+        const { project } = useProjectStore.getState();
+        if (project) {
+          const boxMinX = Math.min(startWorld.x, currentWorld.x);
+          const boxMinY = Math.min(startWorld.y, currentWorld.y);
+          const boxMaxX = Math.max(startWorld.x, currentWorld.x);
+          const boxMaxY = Math.max(startWorld.y, currentWorld.y);
+
+          const hitIds = project.nodes
+            .filter((node) => {
+              const nx = node.position.x;
+              const ny = node.position.y;
+              // AABB intersection: node rect vs box rect
+              return (
+                nx + NODE_WIDTH >= boxMinX &&
+                nx <= boxMaxX &&
+                ny + NODE_HEIGHT >= boxMinY &&
+                ny <= boxMaxY
+              );
+            })
+            .map((n) => n.id);
+
+          useProjectStore.getState().selectNodes(hitIds);
         }
       }
     }
@@ -118,6 +166,11 @@ export function attachSelection(container: HTMLElement): () => void {
         useProjectStore.getState().clearSelection();
       }
       // If clicked a node, selection was already handled in mouseDown
+    }
+
+    // Hide selection box
+    if (selectionBox) {
+      selectionBox.hide();
     }
 
     dragState = null;

@@ -158,8 +158,9 @@ export class NodeRenderer {
 
   /**
    * Sync mesh state with current node data + selection.
+   * Optional errors map highlights nodes with runtime errors.
    */
-  update(nodes: NodeData[], selectedIds: Set<string>) {
+  update(nodes: NodeData[], selectedIds: Set<string>, errors?: Record<string, string | null>) {
     const currentIds = new Set(nodes.map((n) => n.id));
 
     // Remove meshes for deleted nodes
@@ -185,6 +186,16 @@ export class NodeRenderer {
 
       // Update selection outline visibility
       meshGroup.selectionOutline.visible = selectedIds.has(node.id);
+
+      // Update error tint
+      const hasError = errors && errors[node.id];
+      const bodyMat = meshGroup.bodyMesh.material as THREE.MeshBasicMaterial;
+      const category = getCategoryForType(node.type);
+      if (hasError) {
+        bodyMat.color.setHex(0x6e1d1d); // dark red tint
+      } else if (bodyMat.color.getHex() === 0x6e1d1d) {
+        bodyMat.color.setHex(CATEGORY_COLORS[category]);
+      }
     }
   }
 

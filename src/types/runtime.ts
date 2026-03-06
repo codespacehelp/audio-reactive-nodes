@@ -9,10 +9,8 @@ export interface CompiledExpression {
 
 /** A dependency of an expression */
 export interface ExpressionDep {
-  /** 'node' for @nodeName:channel, 'param' for @:paramName */
-  type: 'node' | 'param';
-  /** Node name (for 'node' type) */
-  nodeName?: string;
+  /** Source node name (empty string for same-node @:param refs) */
+  node: string;
   /** Channel or parameter name */
   name: string;
 }

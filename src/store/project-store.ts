@@ -104,7 +104,7 @@ export const useProjectStore = create<ProjectStore>()((set, get) => ({
       };
     }),
 
-  setParamValue: (nodeId, paramName, value) =>
+  setParamValue: (nodeId, paramName, value) => {
     set((state) => {
       if (!state.project) return state;
       return {
@@ -115,7 +115,12 @@ export const useProjectStore = create<ProjectStore>()((set, get) => ({
           }
         }),
       };
-    }),
+    });
+    // Trigger dirty propagation (imported lazily to avoid circular deps)
+    import('../runtime/dirty-wiring').then(({ markNodeAndDownstreamDirty }) => {
+      markNodeAndDownstreamDirty(nodeId);
+    });
+  },
 
   undo: () => {
     const { undoStack, project } = get();

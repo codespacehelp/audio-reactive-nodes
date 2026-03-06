@@ -3,7 +3,8 @@ import { screenToWorld } from '../camera';
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 5;
-const ZOOM_FACTOR = 1.1;
+/** Zoom per normalized scroll unit (~1 per wheel notch). 0.15 ≈ 16% per notch. */
+const ZOOM_SPEED = 0.15;
 
 /**
  * Attach pan (right-drag) and zoom (wheel) handlers to a container element.
@@ -51,17 +52,24 @@ export function attachPanZoom(container: HTMLElement): () => void {
 
     const { viewport } = useProjectStore.getState();
     const rect = container.getBoundingClientRect();
-
-    // Mouse position relative to container
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
-    // World position under cursor before zoom
+    // Zoom around cursor (Google Maps style: all scroll/pinch = zoom)
     const worldBefore = screenToWorld(screenX, screenY, viewport);
 
-    // Compute new zoom
-    const direction = e.deltaY < 0 ? 1 : -1;
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom * Math.pow(ZOOM_FACTOR, direction)));
+    // Normalize deltaY to ~1.0 per wheel notch regardless of deltaMode.
+    // deltaMode 0 (pixels): browsers send ~100px per notch
+    // deltaMode 1 (lines): browsers send ~3 lines per notch
+    // deltaMode 2 (pages): rare, treat 1 page as 1 notch
+    let normalizedDelta = e.deltaY;
+    if (e.deltaMode === 0) normalizedDelta /= 100;
+    else if (e.deltaMode === 1) normalizedDelta /= 3;
+
+    const newZoom = Math.min(
+      MAX_ZOOM,
+      Math.max(MIN_ZOOM, viewport.zoom * Math.exp(-normalizedDelta * ZOOM_SPEED)),
+    );
 
     // Adjust pan so the world point under cursor stays fixed
     const newPanX = worldBefore.x - screenX / newZoom;
