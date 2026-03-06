@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { useProjectStore } from '../store/project-store';
 import { useRuntimeStore } from '../store/runtime-store';
 
 interface PresentModeProps {
@@ -19,6 +20,18 @@ export default function PresentMode({ onExit }: PresentModeProps) {
     onExit();
   }, [onExit]);
 
+  // Request fullscreen on first click inside the overlay.
+  // useEffect breaks the user gesture chain, so we use an onClick handler
+  // on the container div to satisfy the browser's gesture requirement.
+  const hasRequestedFullscreen = useRef(false);
+  const handleClick = useCallback(() => {
+    const container = containerRef.current;
+    if (container && !hasRequestedFullscreen.current && !document.fullscreenElement) {
+      hasRequestedFullscreen.current = true;
+      container.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -33,31 +46,30 @@ export default function PresentMode({ onExit }: PresentModeProps) {
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
     cameraRef.current = camera;
 
-    // Enter fullscreen
-    container.requestFullscreen().catch(() => {
-      // Fullscreen may be blocked — still render inline
-    });
-
     // Render loop
     function render() {
       const runtime = useRuntimeStore.getState();
 
-      // Find the out node and get its scene
-      for (const [, nodeState] of Object.entries(runtime.nodes)) {
-        const sceneOutput = nodeState.outputs.scene;
+      // Find the out node's scene specifically
+      const project = useProjectStore.getState().project;
+      const outNode = project?.nodes.find((n) => n.type === 'out');
+      if (outNode) {
+        const nodeState = runtime.nodes[outNode.id];
+        const sceneOutput = nodeState?.outputs.scene;
         if (sceneOutput instanceof THREE.Scene) {
-          const scene = sceneOutput;
-
           // Read camera config from scene userData
-          if (scene.userData.cameraPos) {
-            camera.position.copy(scene.userData.cameraPos);
+          // Use .set() instead of .copy()/.lookAt(vec) because cloned scenes
+          // may have plain {x,y,z} objects (from JSON.parse) instead of Vector3
+          if (sceneOutput.userData.cameraPos) {
+            const p = sceneOutput.userData.cameraPos;
+            camera.position.set(p.x, p.y, p.z);
           }
-          if (scene.userData.cameraTarget) {
-            camera.lookAt(scene.userData.cameraTarget);
+          if (sceneOutput.userData.cameraTarget) {
+            const t = sceneOutput.userData.cameraTarget;
+            camera.lookAt(t.x, t.y, t.z);
           }
 
-          renderer.render(scene, camera);
-          break;
+          renderer.render(sceneOutput, camera);
         }
       }
 
@@ -107,7 +119,8 @@ export default function PresentMode({ onExit }: PresentModeProps) {
     <div
       ref={containerRef}
       data-testid="present-overlay"
-      className="fixed inset-0 z-50 bg-black"
+      className="fixed inset-0 z-50 bg-black cursor-pointer"
+      onClick={handleClick}
     />
   );
 }

@@ -13,6 +13,7 @@ import { useProjectStore } from '../store/project-store';
 import { useRuntimeStore } from '../store/runtime-store';
 import NodeLabels from './overlay/NodeLabels';
 import LinePreview from '../preview/LinePreview';
+import WaveformPreview from '../preview/WaveformPreview';
 import ScenePreview from '../preview/ScenePreview';
 
 export default function CanvasRoot() {
@@ -158,6 +159,7 @@ export default function CanvasRoot() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       {/* DOM overlays */}
       <ScenePreview />
+      <WaveformPreview />
       <LinePreview />
       <NodeLabels />
     </div>

@@ -5,7 +5,6 @@ import CanvasRoot from './canvas/CanvasRoot';
 import PropertyPanel from './panel/PropertyPanel';
 import Toolbar from './toolbar/Toolbar';
 import PresentMode from './toolbar/PresentMode';
-import defaultProject from './assets/default.json';
 import type { ProjectSchema } from './types/project';
 import { validateProject } from './schema/validate';
 import { recomputeGraph } from './runtime/recompute-graph';
@@ -29,30 +28,23 @@ export default function App() {
     registerBuiltins();
 
     async function init() {
-      // Check for ?project= query param
+      // Check for ?project= query param, fall back to default.json
       const params = new URLSearchParams(window.location.search);
-      const projectUrl = params.get('project');
+      const projectUrl = params.get('project') ?? 'default.json';
 
-      let proj: ProjectSchema;
-
-      if (projectUrl) {
-        try {
-          const response = await fetch(projectUrl);
-          if (!response.ok) throw new Error(`Failed to load: ${response.status}`);
-          const json = await response.json();
-          const result = validateProject(json);
-          if (!result.ok) throw new Error(result.error);
-          proj = result.value;
-        } catch (err) {
-          console.error('Failed to load project from URL, falling back to default:', err);
-          proj = defaultProject as ProjectSchema;
-        }
-      } else {
-        proj = defaultProject as ProjectSchema;
+      try {
+        const response = await fetch(projectUrl);
+        if (!response.ok) throw new Error(`Failed to load: ${response.status}`);
+        const json = await response.json();
+        const result = validateProject(json);
+        if (!result.ok) throw new Error(result.error);
+        loadProject(result.value);
+        recomputeGraph(result.value);
+      } catch (err) {
+        console.error('Failed to load project:', err);
+        useProjectStore.setState({ loadError: String(err) });
       }
 
-      loadProject(proj);
-      recomputeGraph(proj);
       startFrameLoop();
     }
 

@@ -13,64 +13,64 @@ const PREVIEW_NODE_TYPES = new Set([
   'geo_merge',
   'scene',
   'materials',
+  'out',
 ]);
 
 /** Preview render resolution — match node body aspect ratio */
 const BODY_WIDTH = NODE_WIDTH;
 const BODY_HEIGHT = NODE_HEIGHT - NODE_HEADER_HEIGHT;
 const PREVIEW_ASPECT = BODY_WIDTH / BODY_HEIGHT;
-const PREVIEW_W = 200; // render width
-const PREVIEW_H = Math.round(PREVIEW_W / PREVIEW_ASPECT); // render height (~92)
+const PREVIEW_W = 200;
+const PREVIEW_H = Math.round(PREVIEW_W / PREVIEW_ASPECT);
 
-interface PreviewEntry {
+/** Per-node display state (2D canvas for blitting) */
+interface DisplayEntry {
   canvas: HTMLCanvasElement;
-  renderer: THREE.WebGLRenderer;
-  camera: THREE.PerspectiveCamera;
-  /** For geometry nodes: a small default scene with lights */
-  defaultScene: THREE.Scene;
-}
-
-function createPreviewEntry(): PreviewEntry {
-  const canvas = document.createElement('canvas');
-  canvas.width = PREVIEW_W;
-  canvas.height = PREVIEW_H;
-  canvas.style.position = 'absolute';
-  canvas.style.pointerEvents = 'none';
-  canvas.style.borderRadius = '0 0 8px 8px';
-
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setSize(PREVIEW_W, PREVIEW_H);
-  renderer.setPixelRatio(1); // keep low for perf
-
-  const camera = new THREE.PerspectiveCamera(50, PREVIEW_ASPECT, 0.1, 100);
-  camera.position.set(3, 2, 3);
-  camera.lookAt(0, 0, 0);
-
-  // Default scene for geometry-only nodes (no scene node upstream)
-  const defaultScene = new THREE.Scene();
-  defaultScene.background = new THREE.Color(0x1a1a2e);
-  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-  defaultScene.add(ambient);
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  dirLight.position.set(5, 5, 5);
-  defaultScene.add(dirLight);
-
-  return { canvas, renderer, camera, defaultScene };
+  ctx2d: CanvasRenderingContext2D;
 }
 
 /**
  * DOM overlay rendering small 3D previews inside geometry/scene nodes.
- * Each visible node gets its own offscreen WebGLRenderer for isolation.
+ * Uses a SINGLE shared WebGLRenderer to avoid hitting the browser's
+ * WebGL context limit (~8 in Chrome). Each node's preview is rendered
+ * to the shared renderer, then blitted to a per-node 2D canvas.
  */
 export default function ScenePreview() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const entriesRef = useRef<Map<string, PreviewEntry>>(new Map());
+  const displaysRef = useRef<Map<string, DisplayEntry>>(new Map());
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const defaultSceneRef = useRef<THREE.Scene | null>(null);
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Single shared offscreen WebGL renderer
+    const offscreen = document.createElement('canvas');
+    offscreen.width = PREVIEW_W;
+    offscreen.height = PREVIEW_H;
+    const renderer = new THREE.WebGLRenderer({ canvas: offscreen, antialias: true, alpha: false });
+    renderer.setSize(PREVIEW_W, PREVIEW_H);
+    renderer.setPixelRatio(1);
+    rendererRef.current = renderer;
+
+    const camera = new THREE.PerspectiveCamera(50, PREVIEW_ASPECT, 0.1, 100);
+    camera.position.set(3, 2, 3);
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    // Default scene with lights for geometry-only nodes
+    const defaultScene = new THREE.Scene();
+    defaultScene.background = new THREE.Color(0x1a1a2e);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    defaultScene.add(ambient);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 5, 5);
+    defaultScene.add(dirLight);
+    defaultSceneRef.current = defaultScene;
 
     function update() {
       frameCountRef.current++;
@@ -83,21 +83,20 @@ export default function ScenePreview() {
       const previewNodes = project.nodes.filter((n) => PREVIEW_NODE_TYPES.has(n.type));
       const currentIds = new Set(previewNodes.map((n) => n.id));
 
-      // Remove stale entries
-      for (const [id, entry] of entriesRef.current) {
+      // Remove stale display canvases
+      for (const [id, display] of displaysRef.current) {
         if (!currentIds.has(id)) {
-          entry.renderer.dispose();
-          if (container.contains(entry.canvas)) {
-            container.removeChild(entry.canvas);
+          if (container.contains(display.canvas)) {
+            container.removeChild(display.canvas);
           }
-          entriesRef.current.delete(id);
+          displaysRef.current.delete(id);
         }
       }
 
       // Hide all if zoomed out too far
       if (viewport.zoom < 0.4) {
-        for (const [, entry] of entriesRef.current) {
-          entry.canvas.style.display = 'none';
+        for (const [, display] of displaysRef.current) {
+          display.canvas.style.display = 'none';
         }
         rafRef.current = requestAnimationFrame(update);
         return;
@@ -110,11 +109,19 @@ export default function ScenePreview() {
       const containerRect = container.getBoundingClientRect();
 
       for (const node of previewNodes) {
-        let entry = entriesRef.current.get(node.id);
-        if (!entry) {
-          entry = createPreviewEntry();
-          container.appendChild(entry.canvas);
-          entriesRef.current.set(node.id, entry);
+        let display = displaysRef.current.get(node.id);
+        if (!display) {
+          const canvas = document.createElement('canvas');
+          canvas.width = PREVIEW_W;
+          canvas.height = PREVIEW_H;
+          canvas.style.position = 'absolute';
+          canvas.style.pointerEvents = 'none';
+          canvas.style.borderRadius = '0 0 8px 8px';
+          const ctx2d = canvas.getContext('2d');
+          if (!ctx2d) continue;
+          container.appendChild(canvas);
+          display = { canvas, ctx2d };
+          displaysRef.current.set(node.id, display);
         }
 
         // Position below header
@@ -126,7 +133,7 @@ export default function ScenePreview() {
         const w = NODE_WIDTH * viewport.zoom;
         const h = (NODE_HEIGHT - NODE_HEADER_HEIGHT) * viewport.zoom;
 
-        // Viewport culling: skip if node is off-screen
+        // Viewport culling
         const offScreen =
           screenPos.x + w < 0 ||
           screenPos.x > containerRect.width ||
@@ -134,61 +141,80 @@ export default function ScenePreview() {
           screenPos.y > containerRect.height;
 
         if (offScreen) {
-          entry.canvas.style.display = 'none';
+          display.canvas.style.display = 'none';
           continue;
         }
 
-        entry.canvas.style.left = `${screenPos.x}px`;
-        entry.canvas.style.top = `${screenPos.y}px`;
-        entry.canvas.style.width = `${w}px`;
-        entry.canvas.style.height = `${h}px`;
-        entry.canvas.style.display = '';
+        display.canvas.style.left = `${screenPos.x}px`;
+        display.canvas.style.top = `${screenPos.y}px`;
+        display.canvas.style.width = `${w}px`;
+        display.canvas.style.height = `${h}px`;
+        display.canvas.style.display = '';
 
         // Only render 3D on throttled frames
         if (!shouldRender3D) continue;
 
-        // Get node's output
         const runtimeNode = runtimeNodes[node.id];
         if (!runtimeNode) continue;
 
         const outputs = runtimeNode.outputs;
         const sceneOutput = outputs.scene;
-        // Geometry nodes may output as 'geometry' or 'out'
         const geoOutput = outputs.geometry ?? outputs.out;
 
-        if (sceneOutput instanceof THREE.Scene) {
-          // Scene node: render its scene directly
-          const scene = sceneOutput;
-          if (scene.userData.cameraPos) {
-            entry.camera.position.copy(scene.userData.cameraPos);
-          }
-          if (scene.userData.cameraTarget) {
-            entry.camera.lookAt(scene.userData.cameraTarget);
-          }
-          entry.renderer.render(scene, entry.camera);
-        } else if (geoOutput instanceof THREE.Object3D) {
-          // Geometry node: put mesh into default scene and render
-          // Clear previous geometry children (keep lights at index 0,1)
-          while (entry.defaultScene.children.length > 2) {
-            entry.defaultScene.remove(entry.defaultScene.children[2]);
-          }
-          const clone = geoOutput.clone();
-          entry.defaultScene.add(clone);
+        // Clear default scene (keep lights at index 0,1)
+        while (defaultScene.children.length > 2) {
+          defaultScene.remove(defaultScene.children[2]);
+        }
 
-          // Auto-fit camera based on bounding box
+        let rendered = false;
+
+        if (sceneOutput instanceof THREE.Scene) {
+          // Scene/out node: clone children into our default scene
+          const clonedChildren = [...sceneOutput.children];
+          for (const child of clonedChildren) {
+            defaultScene.add(child.clone());
+          }
+          if (sceneOutput.background) {
+            defaultScene.background = sceneOutput.background;
+          }
+          if (sceneOutput.userData.cameraPos) {
+            const p = sceneOutput.userData.cameraPos;
+            camera.position.set(p.x, p.y, p.z);
+          }
+          if (sceneOutput.userData.cameraTarget) {
+            const t = sceneOutput.userData.cameraTarget;
+            camera.lookAt(t.x, t.y, t.z);
+          }
+          renderer.render(defaultScene, camera);
+          rendered = true;
+        } else if (geoOutput instanceof THREE.Object3D) {
+          // Geometry/materials node: clone into default scene
+          const clone = geoOutput.clone();
+          defaultScene.add(clone);
+
+          // Reset background
+          defaultScene.background = new THREE.Color(0x1a1a2e);
+
+          // Auto-fit camera
           const box = new THREE.Box3().setFromObject(clone);
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
           const maxDim = Math.max(size.x, size.y, size.z);
           const dist = maxDim * 1.8;
-          entry.camera.position.set(
+          camera.position.set(
             center.x + dist * 0.6,
             center.y + dist * 0.5,
             center.z + dist * 0.6,
           );
-          entry.camera.lookAt(center);
+          camera.lookAt(center);
+          renderer.render(defaultScene, camera);
+          rendered = true;
+        }
 
-          entry.renderer.render(entry.defaultScene, entry.camera);
+        // Blit from shared WebGL canvas to this node's 2D canvas
+        if (rendered) {
+          display.ctx2d.clearRect(0, 0, PREVIEW_W, PREVIEW_H);
+          display.ctx2d.drawImage(offscreen, 0, 0);
         }
       }
 
@@ -199,13 +225,13 @@ export default function ScenePreview() {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
-      for (const [, entry] of entriesRef.current) {
-        entry.renderer.dispose();
-        if (container.contains(entry.canvas)) {
-          container.removeChild(entry.canvas);
+      renderer.dispose();
+      for (const [, display] of displaysRef.current) {
+        if (container.contains(display.canvas)) {
+          container.removeChild(display.canvas);
         }
       }
-      entriesRef.current.clear();
+      displaysRef.current.clear();
     };
   }, []);
 
