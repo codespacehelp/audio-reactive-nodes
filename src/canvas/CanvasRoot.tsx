@@ -3,6 +3,7 @@ import { initRenderer, resizeRenderer, type CanvasContext } from './three/setup'
 import { updateCamera } from './camera';
 import { GridRenderer } from './three/grid';
 import { NodeRenderer } from './three/node-mesh';
+import { PortRenderer } from './three/port-mesh';
 import { useProjectStore } from '../store/project-store';
 
 export default function CanvasRoot() {
@@ -11,6 +12,7 @@ export default function CanvasRoot() {
   const ctxRef = useRef<CanvasContext | null>(null);
   const gridRef = useRef<GridRenderer | null>(null);
   const nodeRendererRef = useRef<NodeRenderer | null>(null);
+  const portRendererRef = useRef<PortRenderer | null>(null);
   const rafRef = useRef<number>(0);
   const sizeRef = useRef({ width: 0, height: 0 });
 
@@ -29,6 +31,10 @@ export default function CanvasRoot() {
 
       if (nodeRendererRef.current && project) {
         nodeRendererRef.current.update(project.nodes, selectedNodeIds);
+      }
+
+      if (portRendererRef.current && project) {
+        portRendererRef.current.update(project.nodes);
       }
 
       ctx.renderer.renderAsync(ctx.scene, ctx.camera);
@@ -51,6 +57,7 @@ export default function CanvasRoot() {
       ctxRef.current = ctx;
       gridRef.current = new GridRenderer(ctx.scene);
       nodeRendererRef.current = new NodeRenderer(ctx.scene);
+      portRendererRef.current = new PortRenderer(ctx.scene);
 
       // Initial size
       const { clientWidth, clientHeight } = container;
@@ -77,6 +84,10 @@ export default function CanvasRoot() {
       disposed = true;
       cancelAnimationFrame(rafRef.current);
       ro.disconnect();
+      if (portRendererRef.current) {
+        portRendererRef.current.dispose();
+        portRendererRef.current = null;
+      }
       if (nodeRendererRef.current) {
         nodeRendererRef.current.dispose();
         nodeRendererRef.current = null;
