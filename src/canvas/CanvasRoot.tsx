@@ -4,6 +4,7 @@ import { updateCamera } from './camera';
 import { GridRenderer } from './three/grid';
 import { NodeRenderer } from './three/node-mesh';
 import { PortRenderer } from './three/port-mesh';
+import { EdgeRenderer } from './three/edge-lines';
 import { useProjectStore } from '../store/project-store';
 
 export default function CanvasRoot() {
@@ -13,6 +14,7 @@ export default function CanvasRoot() {
   const gridRef = useRef<GridRenderer | null>(null);
   const nodeRendererRef = useRef<NodeRenderer | null>(null);
   const portRendererRef = useRef<PortRenderer | null>(null);
+  const edgeRendererRef = useRef<EdgeRenderer | null>(null);
   const rafRef = useRef<number>(0);
   const sizeRef = useRef({ width: 0, height: 0 });
 
@@ -37,6 +39,10 @@ export default function CanvasRoot() {
         portRendererRef.current.update(project.nodes);
       }
 
+      if (edgeRendererRef.current && project) {
+        edgeRendererRef.current.update(project.nodes, project.connections);
+      }
+
       ctx.renderer.renderAsync(ctx.scene, ctx.camera);
     }
     rafRef.current = requestAnimationFrame(render);
@@ -58,6 +64,7 @@ export default function CanvasRoot() {
       gridRef.current = new GridRenderer(ctx.scene);
       nodeRendererRef.current = new NodeRenderer(ctx.scene);
       portRendererRef.current = new PortRenderer(ctx.scene);
+      edgeRendererRef.current = new EdgeRenderer(ctx.scene);
 
       // Initial size
       const { clientWidth, clientHeight } = container;
@@ -84,6 +91,10 @@ export default function CanvasRoot() {
       disposed = true;
       cancelAnimationFrame(rafRef.current);
       ro.disconnect();
+      if (edgeRendererRef.current) {
+        edgeRendererRef.current.dispose();
+        edgeRendererRef.current = null;
+      }
       if (portRendererRef.current) {
         portRendererRef.current.dispose();
         portRendererRef.current = null;
