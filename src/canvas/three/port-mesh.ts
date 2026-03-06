@@ -18,7 +18,7 @@ const portMaterials = new Map<PortType, THREE.MeshBasicMaterial>();
 function getPortMaterial(portType: PortType): THREE.MeshBasicMaterial {
   let mat = portMaterials.get(portType);
   if (!mat) {
-    mat = new THREE.MeshBasicMaterial({ color: PORT_TYPE_COLORS[portType] });
+    mat = new THREE.MeshBasicMaterial({ color: PORT_TYPE_COLORS[portType], side: THREE.DoubleSide });
     portMaterials.set(portType, mat);
   }
   return mat;

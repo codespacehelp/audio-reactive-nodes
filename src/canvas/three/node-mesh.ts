@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+const { DoubleSide } = THREE;
 import type { NodeData } from '../../types/project';
 import type { NodeCategory } from '../../types/common';
 import {
@@ -194,6 +195,7 @@ export class NodeRenderer {
     // Body
     const bodyMaterial = new THREE.MeshBasicMaterial({
       color: CATEGORY_COLORS[category],
+      side: DoubleSide,
     });
     const bodyMesh = new THREE.Mesh(getBodyGeometry(), bodyMaterial);
     bodyMesh.renderOrder = 1;
@@ -202,6 +204,7 @@ export class NodeRenderer {
     // Header
     const headerMaterial = new THREE.MeshBasicMaterial({
       color: CATEGORY_HEADER_COLORS[category],
+      side: DoubleSide,
     });
     const headerMesh = new THREE.Mesh(getHeaderGeometry(), headerMaterial);
     headerMesh.renderOrder = 2;

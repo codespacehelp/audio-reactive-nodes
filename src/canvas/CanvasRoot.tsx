@@ -43,7 +43,7 @@ export default function CanvasRoot() {
         edgeRendererRef.current.update(project.nodes, project.connections);
       }
 
-      ctx.renderer.renderAsync(ctx.scene, ctx.camera);
+      ctx.renderer.render(ctx.scene, ctx.camera);
     }
     rafRef.current = requestAnimationFrame(render);
   }, []);
