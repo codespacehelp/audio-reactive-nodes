@@ -10,6 +10,8 @@ import { recomputeGraph } from './runtime/recompute-graph';
 import { startFrameLoop, stopFrameLoop } from './runtime/frame-loop';
 import { registerBuiltins } from './nodes/registry';
 import { useRuntimeStore } from './store/runtime-store';
+import { initAudioInput } from './nodes/audio/audio-in';
+import { resumeAudioContext } from './runtime/audio-context';
 
 // Expose stores for debugging in dev
 if (import.meta.env.DEV) {
@@ -51,8 +53,20 @@ export default function App() {
     return () => stopFrameLoop();
   }, [loadProject]);
 
+  const audioStarted = useRuntimeStore((s) => s.audioStarted);
+  const hasAudioNodes = useProjectStore(
+    (s) => s.project?.nodes.some((n) => n.type === 'audio_in') ?? false,
+  );
+  const showStartOverlay = hasAudioNodes && !audioStarted;
+
   const handlePresent = useCallback(() => setPresenting(true), []);
   const handleExitPresent = useCallback(() => setPresenting(false), []);
+
+  const handleStart = useCallback(async () => {
+    await resumeAudioContext();
+    initAudioInput();
+    useRuntimeStore.getState().setAudioStarted();
+  }, []);
 
   if (loadError) {
     return (
@@ -75,7 +89,7 @@ export default function App() {
       <div className="flex h-screen w-screen flex-col bg-zinc-900 text-zinc-100">
         <Toolbar onPresent={handlePresent} />
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="relative flex flex-1 overflow-hidden">
           {/* Canvas area */}
           <div className="flex-1 relative">
             <CanvasRoot />
@@ -85,6 +99,20 @@ export default function App() {
           <div className="w-80 shrink-0 border-l border-zinc-700 bg-zinc-800">
             <PropertyPanel />
           </div>
+
+          {/* Start overlay — dims content until user clicks to enable audio */}
+          {showStartOverlay && (
+            <div
+              className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm cursor-pointer"
+              onClick={handleStart}
+            >
+              <button
+                className="px-8 py-3 rounded-full bg-green-600 text-white text-lg font-medium shadow-xl shadow-green-900/40 hover:bg-green-500 transition-colors"
+              >
+                Start Project
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
