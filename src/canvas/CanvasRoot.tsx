@@ -6,6 +6,7 @@ import { NodeRenderer } from './three/node-mesh';
 import { PortRenderer } from './three/port-mesh';
 import { EdgeRenderer } from './three/edge-lines';
 import { attachPanZoom } from './interaction/pan-zoom';
+import { attachSelection } from './interaction/selection';
 import { useProjectStore } from '../store/project-store';
 
 export default function CanvasRoot() {
@@ -76,8 +77,9 @@ export default function CanvasRoot() {
       rafRef.current = requestAnimationFrame(render);
     });
 
-    // Pan and zoom
+    // Interaction handlers
     const cleanupPanZoom = attachPanZoom(container);
+    const cleanupSelection = attachSelection(container);
 
     // Resize observer
     const ro = new ResizeObserver((entries) => {
@@ -95,6 +97,7 @@ export default function CanvasRoot() {
       disposed = true;
       cancelAnimationFrame(rafRef.current);
       cleanupPanZoom();
+      cleanupSelection();
       ro.disconnect();
       if (edgeRendererRef.current) {
         edgeRendererRef.current.dispose();
